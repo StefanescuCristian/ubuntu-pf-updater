@@ -1,0 +1,42 @@
+#!/bin/bash
+function _getthem(){
+wget -c "http://repos.natalenko.name/ubuntu/pf/linux-image-$version-pf_1_$arch.deb" &> /dev/null
+wget -c "http://repos.natalenko.name/ubuntu/pf/linux-headers-$version-pf_1_$arch.deb" &> /dev/null
+}
+
+function _install(){
+image=`echo linux-image-$version-pf_1_$arch.deb`
+headers=`echo linux-headers-$version-pf_1_$arch.deb`
+
+echo "Install $image ?"
+read input
+if [ $input == "y" ] || [ $input == "Y" ]; then
+	sudo dpkg -i $image
+fi
+
+echo "Install $headers ?"
+read input
+if [ $input == "y" ] || [ $input == "Y" ]; then
+	sudo dpkg -i $headers
+fi
+}
+
+ONLINE_VERSION_FILE=$(mktemp -t)
+LOCAL_VERSION=`uname -r | sed 's/-/\ /g' | awk '{print $1}'`
+wget http://repos.natalenko.name/ubuntu/pf/ -O ubu.html &>/dev/null
+cat ubu.html | sed 's/^.*>\([^<]*\)<.*$/\1/' | sed 's/<[^>]*>//g' |grep -vi packages | grep -vi headers | grep -vi source | grep -vi "pf_1_i386" | sed 's/linux-image-//g' | sed 's/-/\ /g' | awk '{print $1}' | sort -r > $ONLINE_VERSION_FILE
+
+if [ `uname -m` == "i686" ]; then
+	arch="i386"
+elif [ `uname -m` == "x86_64" ]; then
+	arch="amd64"
+fi
+
+for version in $(cat $ONLINE_VERSION_FILE); do 
+	expr $version \= $LOCAL_VERSION > /dev/null && echo "You have the latest -pf kernel instaled!"
+	expr $version \> $LOCAL_VERSION > /dev/null && _getthem && _install
+done
+
+##cleanup
+rm ubu.html
+rm $ONLINE_VERSION_FILE
